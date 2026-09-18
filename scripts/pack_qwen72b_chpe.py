@@ -182,12 +182,11 @@ def make_record(
     )
     dims = struct.pack(FMT_DIMS, scale, bias, rows, cols)
 
-    if aux_payload is not None:
-        name_bytes = tensor_name.encode("utf-8")[:128].ljust(128, b"\x00")
-        payload = meta + dims + aux_payload + name_bytes
-    else:
-        name_bytes = tensor_name.encode("utf-8")[:912].ljust(912, b"\x00")
-        payload = meta + dims + name_bytes
+    base_payload = meta + dims + (aux_payload if aux_payload is not None else b"")
+    remaining = SEMANTIC_PAYLOAD_BYTES - len(base_payload)
+    assert remaining >= 0, f"base_payload length {len(base_payload)} exceeds {SEMANTIC_PAYLOAD_BYTES}"
+    name_bytes = tensor_name.encode("utf-8")[:remaining].ljust(remaining, b"\x00")
+    payload = base_payload + name_bytes
 
     assert len(payload) == SEMANTIC_PAYLOAD_BYTES, f"Payload length mismatch: {len(payload)} != {SEMANTIC_PAYLOAD_BYTES}"
     cell[BYTECODE_BYTES + TILE_CODE_BYTES :] = payload
