@@ -116,8 +116,8 @@ def quantize_2bit_block(blk: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
       11_2 -> -1.0 * s
     """
     m = np.max(np.abs(blk), axis=1, keepdims=True)
-    s = np.where(m > 0, m / 2.0, 1.0).astype(np.float16)
-    s_f32 = s.astype(np.float32)
+    s = np.where(m > 1e-8, m / 2.0, 1.0).astype(np.float16)
+    s_f32 = np.where(s > 1e-8, s.astype(np.float32), 1.0)
 
     scaled = blk / s_f32
     q = np.where(scaled >= 0.5, 1,
@@ -138,8 +138,8 @@ def quantize_2bit_block(blk: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 def quantize_4bit_block(blk: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Quantize blk [N, 128] to 4-bit symmetric affine with group-128 scaling."""
     m = np.max(np.abs(blk), axis=1, keepdims=True)
-    s = np.where(m > 0, m / 7.0, 1.0).astype(np.float16)
-    s_f32 = s.astype(np.float32)
+    s = np.where(m > 1e-8, m / 7.0, 1.0).astype(np.float16)
+    s_f32 = np.where(s > 1e-8, s.astype(np.float32), 1.0)
 
     q = np.clip(np.round(blk / s_f32), -8, 7).astype(np.int8)
     nibbles = (q + 8).astype(np.uint8).reshape(-1, 2)
