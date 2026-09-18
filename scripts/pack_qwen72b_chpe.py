@@ -385,6 +385,8 @@ def pack_qwen72b(
 
                 offset = 0
                 tile_idx = 0
+                chpe_f.seek(HEADER_BYTES + start_rec * stride)
+                rec_buf = bytearray()
                 while offset < total_weights:
                     chunk = flat[offset : offset + WEIGHTS_PER_TILE]
                     blk = chunk.reshape(-1, 128)
@@ -417,13 +419,18 @@ def pack_qwen72b(
                         aux_payload=aux_payload,
                         dense=dense,
                     )
-                    file_pos = HEADER_BYTES + (start_rec + tile_idx) * stride
-                    chpe_f.seek(file_pos)
-                    chpe_f.write(rec)
-
+                    rec_buf.extend(rec)
                     processed_records += 1
                     tile_idx += 1
                     offset += WEIGHTS_PER_TILE
+
+                    if len(rec_buf) >= 64 * stride:
+                        chpe_f.write(rec_buf)
+                        rec_buf.clear()
+
+                if rec_buf:
+                    chpe_f.write(rec_buf)
+                    rec_buf.clear()
 
         mm.close()
         sf.close()
